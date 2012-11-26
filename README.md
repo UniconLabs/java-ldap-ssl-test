@@ -2,7 +2,7 @@ Java Keystore LDAPS Test
 ====================
 
 ##Configuration
-See `Test.properties`.
+See [`Test.properties`](https://github.com/mmoayyed/java-ldap-ssl-test/blob/master/Test.properties).
 
 ##Build
 To compile and then use, execute:
