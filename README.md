@@ -64,12 +64,12 @@ The log below demonstrates a sample of the program output configured to hit 5 ld
 [INFO]	com.sun.jndi.ldap.connect.timeout: 3000
 [INFO]	java.naming.factory.initial: com.sun.jndi.ldap.LdapCtxFactory
 [INFO]	java.naming.security.principal: casadmin@somewhere.local
-[INFO]	java.naming.provider.url: ldap://10.1.128.33
+[INFO]	java.naming.provider.url: ldap://10.1.12.33
 [INFO]	java.naming.security.authentication: simple
 [INFO]	java.naming.security.credentials: helloWorld!
 [INFO]	**********************************
 
-[INFO]	Successfully connected to the ldap url [ldap://10.1.128.33] 
+[INFO]	Successfully connected to the ldap url [ldap://10.1.12.33] 
 
 [INFO]	******* Ldap Search *******
 [INFO]	Ldap filter: (&(objectClass=*) (sAMAccountName=casadmin))
