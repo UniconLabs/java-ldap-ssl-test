@@ -25,7 +25,7 @@ The log below demonstrates a sample of the program output configured to hit 5 ld
 [INFO]	java.naming.security.credentials: helloWorld!
 [INFO]	**********************************
 
-[INFO]	Failed to connext to ldap instance [ldap://10.1.54.56]. Trying next...
+[INFO]	Failed to connect to ldap instance [ldap://10.1.54.56]. Trying next...
 
 [INFO]	******* Ldap Configuration *******
 [INFO]	com.sun.jndi.ldap.connect.timeout: 3000
