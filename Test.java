@@ -57,7 +57,7 @@ public class Test extends Formatter {
             try {
                 return new Pair<String, DirContext>(ldapUrl, new InitialDirContext(env));
             } catch (Exception e) {
-                theLogger.info("Failed to connext to ldap instance [" + ldapUrl.trim() + "]. Trying next...\n");
+                theLogger.info("Failed to connect to ldap instance [" + ldapUrl.trim() + "]. Trying next...\n");
             }
         }
     }
@@ -78,7 +78,7 @@ public class Test extends Formatter {
         throw new IllegalArgumentException("Could not connect to any of the provided ldap urls based on the given credentials.");
     }
 
-    DirContext ctx = pair.getSecond();
+    DirContext ctx = null;
 
     try {
       ctx = pair.getSecond();
@@ -104,6 +104,20 @@ public class Test extends Formatter {
           theLogger.info("User name: " + result.getName());
           theLogger.info("User full name: " + result.getNameInNamespace());
 
+          String authnPsw = props.getProperty("ldap.authn.password");
+          if (authnPsw != null) {
+            theLogger.info("Attempting to authenticate " + result.getName() + " with password " + authnPsw);
+
+            final Hashtable<String, String> env = new Hashtable<String, String>(6);
+            env.put(Context.INITIAL_CONTEXT_FACTORY, props.getProperty("ldap.factory"));
+            env.put(Context.PROVIDER_URL, pair.getFirst().trim());
+            env.put(Context.SECURITY_AUTHENTICATION, props.getProperty("ldap.authentication"));
+            env.put(Context.SECURITY_PRINCIPAL, result.getNameInNamespace());
+            env.put(Context.SECURITY_CREDENTIALS, authnPsw);
+            env.put("com.sun.jndi.ldap.connect.timeout", props.getProperty("ldap.timeout"));
+            DirContext userCtx = new InitialDirContext(env);
+            theLogger.info("Successfully authenticated " + result.getName() + " with password " + authnPsw + " at " + pair.getFirst());
+          }
           final NamingEnumeration<String> attrs = result.getAttributes().getIDs();
 
           while (attrs.hasMoreElements()) {
