@@ -57,6 +57,7 @@ public class Test extends Formatter {
             try {
                 return new Pair<String, DirContext>(ldapUrl, new InitialDirContext(env));
             } catch (Exception e) {
+                theLogger.severe(e.getMessage());
                 theLogger.info("Failed to connect to ldap instance [" + ldapUrl.trim() + "]. Trying next...\n");
             }
         }
