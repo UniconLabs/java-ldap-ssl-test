@@ -1,18 +1,31 @@
-Java Keystore LDAPS Test
+Java LDAP Test
 ====================
 
-##Configuration
-See [`Test.properties`](https://github.com/mmoayyed/java-ldap-ssl-test/blob/master/Test.properties).
+This is a small test utility that attempts to connect to an LDAP instance,
+authenticate a given credential and retrieve attributes. It is very helpful
+for testing secure connections, LDAPS and certificate configuration.
 
-##Build
-To compile and then use, execute:
+## Configuration
+
+See [`Test.properties`](https://github.com/mmoayyed/java-ldap-ssl-test/blob/master/src/main/resources/Test.properties).
+
+## Build
+
+```bash
+mvn clean package 
+```
+
+## Usage
+
+- Download the JAR from [here](https://github.com/UniconLabs/java-ldap-ssl-test/releases)
+- Run:
 
 ```
-javac Test.java 
-java Test 
+java -jar <jar-file-name>
 ```
 
 ##Sample output
+
 The log below demonstrates a sample of the program output configured to hit 5 ldap urls. 
 
 ```
@@ -86,4 +99,3 @@ The log below demonstrates a sample of the program output configured to hit 5 ld
 
 [INFO]	Ldap search completed successfully. 
 ```
- 
