@@ -7,7 +7,7 @@ for testing secure connections, LDAPS and certificate configuration.
 
 ## Configuration
 
-See [`Test.properties`](https://github.com/mmoayyed/java-ldap-ssl-test/blob/master/src/main/resources/Test.properties).
+See [`application.properties`](java-ldap-ssl-test/blob/master/src/main/resources/application.properties).
 
 ## Build
 
@@ -17,12 +17,22 @@ mvn clean package
 
 ## Usage
 
-- Download the JAR from [here](https://github.com/UniconLabs/java-ldap-ssl-test/releases)
+- Download the JAR from the [releases page](java-ldap-ssl-test/releases)
 - Run:
 
 ```
 java -jar <jar-file-name>
 ```
+
+## Custom Configuration
+
+The configuration can be customized without rebuilding the project. A simple approach is to
+create a [`application.properties`](java-ldap-ssl-test/blob/master/src/main/resources/application.properties)
+file, with your required values, in the same directory as the jar before running.
+
+The jar is built on [Spring Boot](https://projects.spring.io/spring-boot/) so any of their 
+[Externalized Configuration](https://docs.spring.io/spring-boot/docs/current/reference/html/boot-features-external-config.html)
+options will work also like environment variables or java system properties from the command line.
 
 ##Sample output
 
