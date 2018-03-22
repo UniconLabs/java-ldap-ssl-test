@@ -2,77 +2,77 @@ package net.unicon;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.CommandLineRunner;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.ApplicationArguments;
+import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 import javax.naming.Context;
 import javax.naming.NamingEnumeration;
+import javax.naming.NamingException;
 import javax.naming.directory.DirContext;
 import javax.naming.directory.InitialDirContext;
 import javax.naming.directory.SearchControls;
 import javax.naming.directory.SearchResult;
+import java.util.AbstractMap.SimpleEntry;
 import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.Hashtable;
-import java.util.Properties;
 
-public class Test implements CommandLineRunner {
-    protected final Logger logger = LoggerFactory.getLogger(this.getClass());
+@SpringBootApplication
+public class Test implements ApplicationRunner {
 
-    public static void main(String[] args) throws Exception {
+    public static void main(String[] args) {
         SpringApplication.run(Test.class, args);
     }
 
-    public void run(final String... args) throws Exception {
-        final Properties props = new Properties();
-        props.load(Test.class.getResourceAsStream("/Test.properties"));
+    private final Logger logger = LoggerFactory.getLogger(this.getClass());
+    private final LdapOptions ldap;
 
+    @Autowired
+    public Test(LdapOptions ldap){
+        this.ldap=ldap;
+    }
+
+    @Override
+    public void run(ApplicationArguments args) {
         try {
-            connect(props);
-        } catch (final IllegalArgumentException e) {
-            logger.error(e.getMessage());
+            connect();
         } catch (final Exception e) {
-            logger.error(e.getMessage());
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
         }
     }
 
-    private Pair<String, DirContext> getContext(final Properties props) {
-        for (int i = 0; i < 5; i++) {
-            String ldapUrl = props.getProperty("ldap.url" + (i + 1));
+    private SimpleEntry<String, DirContext> getContext() {
 
-            if (ldapUrl != null && !ldapUrl.isEmpty()) {
-                logger.info("\nAttempting connect to LDAP instance #" + (i + 1) + ": [" + ldapUrl.trim() + "].\n");
-                ldapUrl = ldapUrl.trim();
-                final Hashtable<String, String> env = new Hashtable<>(6);
-                env.put(Context.INITIAL_CONTEXT_FACTORY, props.getProperty("ldap.factory"));
-                env.put(Context.PROVIDER_URL, ldapUrl.trim());
-                env.put(Context.SECURITY_AUTHENTICATION, props.getProperty("ldap.authentication"));
-                env.put(Context.SECURITY_PRINCIPAL, props.getProperty("ldap.userId"));
-                env.put(Context.SECURITY_CREDENTIALS, props.getProperty("ldap.password"));
-                env.put("com.sun.jndi.ldap.connect.timeout", props.getProperty("ldap.timeout"));
-
-                printConfig(env);
-                try {
-                    return new Pair<>(ldapUrl, new InitialDirContext(env));
-                } catch (Exception e) {
-                    logger.info("\nFailed to connect to ldap instance #" + (i + 1) + ": [" + ldapUrl.trim() + "].\n");
-                }
+        String[] urls = ldap.getUrls();
+        for (int i = 0; i < urls.length; i++) {
+            String ldapUrl = urls[i];
+            if(ldapUrl==null || ldapUrl.trim().isEmpty()) {
+                continue;
+            }
+            ldapUrl = ldapUrl.trim();
+            logger.info("\nAttempting connect to LDAP instance {}: [{}].\n", (i + 1), ldapUrl);
+            final Hashtable<String, String> env = buildEnv(ldapUrl, ldap.getUserId(), ldap.getPassword());
+            printConfig(env);
+            try {
+                return new SimpleEntry<>(ldapUrl, new InitialDirContext(env));
+            } catch (Exception e) {
+                logger.info("\nFailed to connect to ldap instance #{}: [{}].\n", (i + 1), ldapUrl);
             }
         }
         return null;
     }
 
-    private void connect(final Properties props) throws Exception {
-        final String[] attrIDs = props.getProperty("ldap.attributes").split(",");
-
+    private void connect() throws NamingException {
         final SearchControls ctls = new SearchControls();
         ctls.setDerefLinkFlag(true);
-        ctls.setTimeLimit(new Integer(props.getProperty("ldap.timeout")));
-        ctls.setReturningAttributes(attrIDs);
+        ctls.setTimeLimit(ldap.getTimeout());
+        ctls.setReturningAttributes(ldap.getAttributes());
         ctls.setSearchScope(SearchControls.SUBTREE_SCOPE);
 
-        final Pair<String, DirContext> pair = getContext(props);
+        final SimpleEntry<String, DirContext> pair = getContext();
         if (pair == null) {
             throw new IllegalArgumentException("\nCould not connect to any of the provided LDAP urls based on the given credentials.");
         }
@@ -80,48 +80,42 @@ public class Test implements CommandLineRunner {
         DirContext ctx = null;
 
         try {
-            ctx = pair.getSecond();
+            ctx = pair.getValue();
 
-            String log = "Successfully connected to the LDAP url [" + pair.getFirst().trim() + "] ";
+            String log = "Successfully connected to the LDAP url [{}] ";
             if (ctx.getNameInNamespace() != null && !ctx.getNameInNamespace().isEmpty()) {
-                log += "with namespace [" + ctx.getNameInNamespace() + "].";
+                log += "with namespace [{}].";
             }
             log += "\n";
-            logger.info(log);
+            logger.info(log, pair.getKey(), ctx.getNameInNamespace());
 
             logger.info("******* Ldap Search *******");
-            logger.info("Ldap filter: " + props.getProperty("ldap.filter"));
-            logger.info("Ldap search base: " + props.getProperty("ldap.baseDn"));
-            logger.info("Returning attributes: " + Arrays.toString(attrIDs));
+            logger.info("Ldap filter: {}", ldap.getFilter());
+            logger.info("Ldap search base: {}", ldap.getBaseDn());
+            logger.info("Returning attributes: {}", Arrays.toString(ldap.getAttributes()));
             logger.info("***************************\n");
 
-            final NamingEnumeration<SearchResult> answer = ctx.search(props.getProperty("ldap.baseDn"), props.getProperty("ldap.filter"), ctls);
+            final NamingEnumeration<SearchResult> answer = ctx.search(ldap.getBaseDn(), ldap.getFilter(), ctls);
             if (answer.hasMoreElements()) {
                 logger.info("******* Ldap Search Results *******");
                 while (answer.hasMoreElements()) {
                     final SearchResult result = answer.nextElement();
-                    logger.info("User name: " + result.getName());
-                    logger.info("User full name: " + result.getNameInNamespace());
+                    logger.info("User name: {}", result.getName());
+                    logger.info("User full name: {}", result.getNameInNamespace());
 
-                    String authnPsw = props.getProperty("ldap.authn.password");
+                    String authnPsw = ldap.getAuthnPassword();
                     if (authnPsw != null) {
-                        logger.info("Attempting to authenticate " + result.getName() + " with password " + authnPsw);
+                        logger.info("Attempting to authenticate {} with password {}",result.getName(), authnPsw);
 
-                        final Hashtable<String, String> env = new Hashtable<>(6);
-                        env.put(Context.INITIAL_CONTEXT_FACTORY, props.getProperty("ldap.factory"));
-                        env.put(Context.PROVIDER_URL, pair.getFirst().trim());
-                        env.put(Context.SECURITY_AUTHENTICATION, props.getProperty("ldap.authentication"));
-                        env.put(Context.SECURITY_PRINCIPAL, result.getNameInNamespace());
-                        env.put(Context.SECURITY_CREDENTIALS, authnPsw);
-                        env.put("com.sun.jndi.ldap.connect.timeout", props.getProperty("ldap.timeout"));
+                        final Hashtable<String, String> env = buildEnv(pair.getKey(), result.getNameInNamespace(), authnPsw);
                         new InitialDirContext(env);
-                        logger.info("Successfully authenticated " + result.getName() + " with password " + authnPsw + " at " + pair.getFirst());
+                        logger.info("Successfully authenticated {} with password {} at {}", result.getName(), authnPsw, pair.getKey());
                     }
                     final NamingEnumeration<String> attrs = result.getAttributes().getIDs();
 
                     while (attrs.hasMoreElements()) {
                         final String id = attrs.nextElement();
-                        logger.info(id + " => " + result.getAttributes().get(id));
+                        logger.info("{} => {} ", id, result.getAttributes().get(id));
                     }
                 }
                 logger.info("************************************\n");
@@ -137,31 +131,25 @@ public class Test implements CommandLineRunner {
         }
     }
 
+    private Hashtable<String,String> buildEnv(String url, String principal, String credentials) {
+        final Hashtable<String, String> env = new Hashtable<>(6);
+        env.put(Context.INITIAL_CONTEXT_FACTORY, ldap.getFactory().getName());
+        env.put(Context.PROVIDER_URL, url);
+        env.put(Context.SECURITY_AUTHENTICATION, ldap.getAuthentication());
+        env.put(Context.SECURITY_PRINCIPAL, principal);
+        env.put(Context.SECURITY_CREDENTIALS, credentials);
+        env.put("com.sun.jndi.ldap.connect.timeout", ldap.getTimeout().toString());
+        return env;
+    }
+
     private void printConfig(final Hashtable<String, String> table) {
         logger.info("******* LDAP Instance Configuration *******");
         final Enumeration<String> names = table.keys();
         while (names.hasMoreElements()) {
             final String str = names.nextElement();
-            logger.info(str + ": " + table.get(str));
+            logger.info("{}: {}", str, table.get(str));
         }
         logger.info("********************************************\n");
     }
 
-    private static class Pair<F, S> {
-        private F first;
-        private S second;
-
-        public Pair(F f, S s) {
-            this.first = f;
-            this.second = s;
-        }
-
-        public F getFirst() {
-            return this.first;
-        }
-
-        public S getSecond() {
-            return this.second;
-        }
-    }
 }
